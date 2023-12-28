@@ -1,5 +1,6 @@
 package top.jocularchao.config;
 
+import jakarta.annotation.Resource;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,11 +11,14 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import top.jocularchao.entity.RestBean;
+import top.jocularchao.entity.vo.response.AuthorizeVO;
+import top.jocularchao.utils.JwtUtils;
 
 import java.io.IOException;
 
@@ -25,6 +29,9 @@ import java.io.IOException;
  */
 @Configuration
 public class SecurityConfiguration {
+
+    @Resource
+    JwtUtils jwtUtils;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -73,8 +80,18 @@ public class SecurityConfiguration {
         //配置编码
         response.setContentType("application/json");
         response.setCharacterEncoding("utf-8");
+        //拿到用户的详细信息
+        User user = (User) authentication.getPrincipal();
+        //给用户塞一个令牌
+        String token = jwtUtils.createJwt(user, 1, "林桑");
+        //封装用户信息，用于返回给客户端
+        AuthorizeVO vo = new AuthorizeVO();
+        vo.setExpire(jwtUtils.expireTime());
+        vo.setRole("");
+        vo.setToken(token);
+        vo.setUsername(user.getUsername());
 
-        response.getWriter().write(RestBean.success().asJsonString());
+        response.getWriter().write(RestBean.success(vo).asJsonString());
     }
 
     //登录失败后的处理
