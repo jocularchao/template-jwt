@@ -41,8 +41,14 @@ public record RestBean<T>(int code, T data,String message) {
     }
 
     //简化请求失败  因为只要失败了就是401所以可以简化参数
+    //未验证情况
     public static <T> RestBean<T> unauthorized(String message){
         return failure(401,message);
+    }
+
+    //登录但没权限
+    public static <T> RestBean<T> forbidden(String message){
+        return failure(403,message);
     }
 
 }

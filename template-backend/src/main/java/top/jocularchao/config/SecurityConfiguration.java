@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -14,6 +15,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -67,6 +69,7 @@ public class SecurityConfiguration {
                 //异常处理
                 .exceptionHandling(conf->conf
                         .authenticationEntryPoint(this::onUnauthorized) //未登录配置
+                        .accessDeniedHandler(this::onAccessDeny)  //登录但没权限
                 )
                 //取消CSRF保护
                 .csrf(AbstractHttpConfigurer::disable)
@@ -140,6 +143,17 @@ public class SecurityConfiguration {
         response.setCharacterEncoding("utf-8");
 
         response.getWriter().write(RestBean.unauthorized(exception.getMessage()).asJsonString());
+    }
+
+    //登录但没权限
+    public void onAccessDeny(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    AccessDeniedException accessDeniedException) throws IOException {
+        //配置编码
+        response.setContentType("application/json");
+        response.setCharacterEncoding("utf-8");
+
+        response.getWriter().write(RestBean.forbidden(accessDeniedException.getMessage()).asJsonString());
     }
 
 }
