@@ -23,10 +23,13 @@ public record RestBean<T>(int code, T data,String message) {
     public static <T> RestBean<T> success(T data){
         return new RestBean<>(200,data,"请求成功");
     }
+
     //默认的请求成功
     public static <T> RestBean<T> success(){
         return success(null);
     }
+
+    //打印
     public String asJsonString(){
         return JSONObject.toJSONString(this, JSONWriter.Feature.WriteNulls);   //WriteNull 不加上的话，前端的lang就没有了
     }
@@ -35,6 +38,11 @@ public record RestBean<T>(int code, T data,String message) {
     //请求失败
     public static <T> RestBean<T> failure(int code, String message){
         return new RestBean<>(code,null,message);
+    }
+
+    //简化请求失败  因为只要失败了就是401所以可以简化参数
+    public static <T> RestBean<T> unauthorized(String message){
+        return failure(401,message);
     }
 
 }
