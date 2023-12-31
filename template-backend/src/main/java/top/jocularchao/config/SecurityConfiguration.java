@@ -12,12 +12,15 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import top.jocularchao.entity.RestBean;
 import top.jocularchao.entity.vo.response.AuthorizeVO;
+import top.jocularchao.filter.JwtAuthorizeFilter;
 import top.jocularchao.utils.JwtUtils;
 
 import java.io.IOException;
@@ -30,9 +33,15 @@ import java.io.IOException;
 @Configuration
 public class SecurityConfiguration {
 
+    //注入jwt工具类
     @Resource
     JwtUtils jwtUtils;
 
+    //注入jwt验证的过滤器
+    @Resource
+    JwtAuthorizeFilter jwtAuthorizeFilter;
+
+    //主配置
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
@@ -55,6 +64,10 @@ public class SecurityConfiguration {
                         .logoutUrl("api/auth/logout")
                         .logoutSuccessHandler(this::onLogoutSuccess)    //登出成功的处理
                 )
+                //异常处理
+                .exceptionHandling(conf->conf
+                        .authenticationEntryPoint(this::onUnauthorized) //未登录配置
+                )
                 //取消CSRF保护
                 .csrf(AbstractHttpConfigurer::disable)
                 //因为我们现在是无状态的前后端分离跟有状态的前后端分离区别：session不需要去维护用户信息，因为用户信息都在JWT里面
@@ -62,8 +75,13 @@ public class SecurityConfiguration {
                 .sessionManagement(conf->conf
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS) //改成无状态
                 )
+                //添加自定义的过滤器
+                .addFilterBefore(jwtAuthorizeFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();   //构建，返回默认的SecurityFilterChain对象
     }
+
+
+
 
     //登录成功后的处理
     /**
@@ -102,7 +120,7 @@ public class SecurityConfiguration {
         response.setContentType("application/json");
         response.setCharacterEncoding("utf-8");
 
-        response.getWriter().write(RestBean.failure(401,exception.getMessage()).asJsonString());
+        response.getWriter().write(RestBean.unauthorized(exception.getMessage()).asJsonString());
     }
 
     //登出成功的处理
@@ -111,6 +129,17 @@ public class SecurityConfiguration {
                                 HttpServletResponse response,
                                 Authentication authentication) throws IOException, ServletException {
 
+    }
+
+    //未登录的处理
+    public void onUnauthorized(HttpServletRequest request,
+                                HttpServletResponse response,
+                                AuthenticationException exception) throws IOException {
+        //配置编码
+        response.setContentType("application/json");
+        response.setCharacterEncoding("utf-8");
+
+        response.getWriter().write(RestBean.unauthorized(exception.getMessage()).asJsonString());
     }
 
 }
