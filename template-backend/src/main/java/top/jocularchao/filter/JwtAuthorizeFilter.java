@@ -42,10 +42,10 @@ public class JwtAuthorizeFilter extends OncePerRequestFilter {  //一次请求�
         DecodedJWT jwt = jwtUtils.resolveJwt(authorization);
         if (jwt!=null){
             //利用工具类解析jwt为用户信息
-            UserDetails details = jwtUtils.toUser(jwt);
+            UserDetails user = jwtUtils.toUser(jwt);
             //这个token是spring security内部的一个token
             UsernamePasswordAuthenticationToken authenticationToken = new
-                    UsernamePasswordAuthenticationToken(details,null,details.getAuthorities());
+                    UsernamePasswordAuthenticationToken(user,null,user.getAuthorities());
 
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             //直接把验证信息往security context里面丢进去,验证就通过了

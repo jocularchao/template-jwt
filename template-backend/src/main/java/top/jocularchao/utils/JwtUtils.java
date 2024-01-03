@@ -6,7 +6,9 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Component;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author jocularchao
@@ -33,8 +37,13 @@ public class JwtUtils {
     int expire;
 
 
+    @Resource(name = "stringRedisTemplate")
+    StringRedisTemplate redisTemplate;
 
-    public String createJwt(UserDetails details,int id,String username){  //从userDetails来获取用户的信息
+
+
+    //创建令牌
+    public String createJwt(UserDetails details,int userId,String username){  //从userDetails来获取用户的信息
         //生成用户加密的算法
         Algorithm algorithm = Algorithm.HMAC256(key);   //加载密钥
 
@@ -42,7 +51,8 @@ public class JwtUtils {
 
         return JWT
                 .create()   //创建
-                .withClaim("id", id)   //userDetails里面没有用户的id，只有用户的名字，所以需要单独加进来加上形参 id
+                .withJWTId(UUID.randomUUID().toString())    //生成随机id便于在销毁jwt时处理
+                .withClaim("id", userId)   //userDetails里面没有用户的id，只有用户的名字，所以需要单独加进来加上形参 id
                 .withClaim("name", username) //我们是通过用户名/邮箱登录的，所以userDetails有可能是邮箱，不太准确同上
                 //details.getAuthorities()是一个list形式，我们要通过GrantedAuthority的方法把它变成string类型的权限
                 .withClaim("authorities",details.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList())
@@ -50,6 +60,42 @@ public class JwtUtils {
                 .withIssuedAt(new Date())   //现在的token的颁发时间
                 .sign(algorithm);   //用算法签名得到lwt令牌
     }
+
+    //销毁令牌
+    public boolean invalidateJwt(String headerToken){
+        String token = this.convertToken(headerToken);
+        Algorithm algorithm = Algorithm.HMAC256(key);
+        JWTVerifier  jwtVerifier = JWT.require(algorithm).build();
+
+        try {
+            DecodedJWT verify = jwtVerifier.verify(token);
+            return deleteToken(verify.getId(),verify.getExpiresAt());
+
+        }catch (JWTVerificationException e){
+            return false;
+        }
+
+    }
+
+    //删除令牌
+    private boolean deleteToken(String uuid,Date time){
+        if (this.isInvalidToken(uuid)){
+            return false;
+        }
+        Date now = new Date();
+        long expire = Math.max(time.getTime() - now.getTime(),0);   //如果已经过期了，那么值就为负值，不能给到token，就用0替代
+
+        redisTemplate.opsForValue().set(Const.JWT_BLACK_LIST+uuid,"",expire, TimeUnit.MILLISECONDS);
+        return true;
+
+    }
+
+    //判断令牌是否过期
+    private boolean isInvalidToken(String uuid){
+        //查询uuid是否在黑名单列表中
+        return Boolean.TRUE.equals(redisTemplate.hasKey(Const.JWT_BLACK_LIST + uuid));
+    }
+
 
     //过期时间
     public Date expireTime(){
@@ -72,6 +118,10 @@ public class JwtUtils {
         try {
             //验证当前的jwt是否合法，就是看是否被用户篡改过，若是篡改过就会抛一个验证异常的运行时异常
             DecodedJWT verifier = jwtVerifier.verify(token);
+            //查看jwt令牌是否失效
+            if (this.isInvalidToken(verifier.getId())){
+                return null;
+            }
             //查看jwt令牌是否过期了
             Date expires = verifier.getExpiresAt();
 

@@ -26,6 +26,7 @@ import top.jocularchao.filter.JwtAuthorizeFilter;
 import top.jocularchao.utils.JwtUtils;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 
 /**
  * @author jocularchao
@@ -131,7 +132,19 @@ public class SecurityConfiguration {
     public void onLogoutSuccess(HttpServletRequest request,
                                 HttpServletResponse response,
                                 Authentication authentication) throws IOException, ServletException {
+        //配置编码
+        response.setContentType("application/json");
+        response.setCharacterEncoding("utf-8");
+        //把writer 便于之后的判断
+        PrintWriter writer = response.getWriter();
 
+        String authorization = request.getHeader("Authorization");
+        if (jwtUtils.invalidateJwt(authorization)){
+            writer.write(RestBean.success("退出登录成功").asJsonString());
+            return;
+        }else {
+            writer.write(RestBean.failure(400,"退出登录失败").asJsonString());
+        }
     }
 
     //未登录的处理
