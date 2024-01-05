@@ -4,6 +4,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,8 +22,10 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import top.jocularchao.entity.RestBean;
+import top.jocularchao.entity.dto.Account;
 import top.jocularchao.entity.vo.response.AuthorizeVO;
 import top.jocularchao.filter.JwtAuthorizeFilter;
+import top.jocularchao.service.AccountService;
 import top.jocularchao.utils.JwtUtils;
 
 import java.io.IOException;
@@ -43,6 +46,10 @@ public class SecurityConfiguration {
     //注入jwt验证的过滤器
     @Resource
     JwtAuthorizeFilter jwtAuthorizeFilter;
+
+    //再次查询数据库
+    @Resource
+    AccountService service;
 
     //主配置
     @Bean
@@ -103,15 +110,25 @@ public class SecurityConfiguration {
         response.setContentType("application/json");
         response.setCharacterEncoding("utf-8");
         //拿到用户的详细信息
-        User user = (User) authentication.getPrincipal();
+        User user = (User) authentication.getPrincipal();   //这里应该自己封装一个userdetails 不用springsecurity提供的user实现
+        //根据拿到的用户 再次查询数据库进行验证并获得实体类用户信息
+        Account account = service.findAccountByNameOrEmail(user.getUsername());
         //给用户塞一个令牌
-        String token = jwtUtils.createJwt(user, 1, "林桑");
-        //封装用户信息，用于返回给客户端
-        AuthorizeVO vo = new AuthorizeVO();
-        vo.setExpire(jwtUtils.expireTime());
-        vo.setRole("");
-        vo.setToken(token);
-        vo.setUsername(user.getUsername());
+        String token = jwtUtils.createJwt(user, account.getId(), account.getUsername());
+        //封装用户信息，用于返回给客户端,把dto的数据 返回给vo，再由vo返回给客户端
+        //AuthorizeVO vo = new AuthorizeVO();
+        //1 拷贝信息
+        //BeanUtils.copyProperties(account,vo);
+        //2 自定义拷贝方法
+        AuthorizeVO vo = account.asViewObject(AuthorizeVO.class,v->{
+            v.setExpire(jwtUtils.expireTime());
+            v.setToken(token);
+        });
+
+
+        //vo.setRole(account.getRole());
+
+        //vo.setUsername(account.getUsername());
 
         response.getWriter().write(RestBean.success(vo).asJsonString());
     }
