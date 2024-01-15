@@ -180,5 +180,10 @@ function logout(success,failure=defaultFailure) {
     },failure)
 }
 
+//判断是否未验证
+function unAuthorized(){
+    return !takeAccessToken()
+}
+
 //导出登录接口
-export {login, logout, get, post};
+export {login, logout, get, post, unAuthorized};

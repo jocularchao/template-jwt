@@ -1,4 +1,5 @@
 import {createRouter, createWebHistory} from "vue-router";
+import {unAuthorized} from "@/net/index.js";
 
 const router = createRouter({
     history:createWebHistory(import.meta.env.BASE_URL),
@@ -30,6 +31,18 @@ const router = createRouter({
         }
     ]
 })
+
+//配置路由守卫
+router.beforeEach((to, from, next)=>{
+    const isUnauthorized = unAuthorized()
+    if (to.name.startsWith('welcome-') && !isUnauthorized){ //已经登录了
+        next('/index')
+    }else if (to.fullPath.startsWith('/index') && isUnauthorized) {//未登录
+        next('/')
+    }else {
+        next()
+    }
+} )
 
 //导出路由
 export default router;
