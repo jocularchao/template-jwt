@@ -3,6 +3,7 @@
 import {Lock, User} from "@element-plus/icons-vue";
 import {reactive,ref} from "vue";
 import {login} from "@/net/index.js";
+import router from "@/router/index.js";
 
 //保存表单的数据
 const form = reactive(
@@ -33,7 +34,9 @@ function userLogin(){
           form.username,
           form.password,
           form.remember,
-          ()=>{})
+          ()=>{
+            router.push('/index')
+          })
     }
   })
 }

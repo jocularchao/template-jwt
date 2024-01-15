@@ -20,7 +20,7 @@ function takeAccessToken() {
     const authObj = JSON.parse(str);
 
     //
-    if(authObj.expire<= new Date()){
+    if(new Date(authObj.expire)<= new Date()){
         //如果日期时间小于当前时间，即过期了，需要我们重新登录，来获取新的token
         deleteAccessToken();
         ElMessage.warning("登录状态已过期，请重新登录");
@@ -97,12 +97,17 @@ const defaultError = (err) => {
     failure 请求失败的回调函数
     error   请求错误的回调函数
 */
-function internalPost(url, data, header, success, failure, error = defaultError) {
+function internalPost(url,
+                      data,
+                      headers,
+                      success,
+                      failure,
+                      error = defaultError) {
     // 我们用axios的原生post请求来尝试一下
     // 这里请求头header->headers放入配置里面
     // then就是我们去请求的数据,请求成功之后得到的一个处理,请求成功后,把data解出来({data})=>{}
     // 因为我们后端做了统一,返回的数据都是JSON的格式,并且都是通过返回我们的code来表示是否成功
-    axios.post(url, data, {headers: header}).then(({data}) => {
+    axios.post(url, data, {headers: headers}).then(({data}) => {
         // code为200 成功
         if (data.code === 200) {
             success(data.data)
@@ -114,8 +119,8 @@ function internalPost(url, data, header, success, failure, error = defaultError)
 
 
 // 内部使用的get请求
-function internalGet(url, header, success, failure, error = defaultError) {
-    axios.get(url, {headers: header}).then(({data}) => {    //回调函数 调用的data是后端传来的data、message、code的集合
+function internalGet(url, headers, success, failure, error = defaultError) {
+    axios.get(url, {headers: headers}).then(({data}) => {    //回调函数 调用的data是后端传来的data、message、code的集合
         if (data.code === 200) {
             success(data.data)
         } else {
@@ -124,13 +129,7 @@ function internalGet(url, header, success, failure, error = defaultError) {
     }).catch(err => error(err))
 }
 
-function get(url,success,failure=defaultFailure) {
-    internalGet(url,accessHeader(),success,failure);
-}
 
-function post(url,data,success,failure=defaultFailure) {
-    internalPost(url,data,accessHeader(),success,failure);
-}
 
 //内部使用的获取请求头
 function accessHeader() {
@@ -139,8 +138,14 @@ function accessHeader() {
         'Authorization': `Bearer ${takeAccessToken()}`
     }:{}
 }
+//额外封装get、post供内外部使用
+function get(url,success,failure=defaultFailure) {
+    internalGet(url,accessHeader(),success,failure);
+}
 
-
+function post(url,data,success,failure=defaultFailure) {
+    internalPost(url,data,accessHeader(),success,failure);
+}
 
 
 
@@ -158,7 +163,7 @@ function login(username, password, remember, success, failure = defaultFailure) 
     }, (data) => {//成功的回调
         //登陆成功后，我们要保存token值
         storeAccessToken(data.token,remember,data.expire);
-        ElMessage.success(`登陆成功,欢迎${data.username}进入我们系统`)
+        ElMessage.success(`登录成功,欢迎${data.username}进入我们系统`)
         success(data)
     },failure);
 
@@ -170,10 +175,10 @@ function login(username, password, remember, success, failure = defaultFailure) 
 function logout(success,failure=defaultFailure) {
     get('/api/auth/logout',()=>{
         deleteAccessToken();
-        ElMessage.success('退出登陆成功，欢迎再次使用')
+        ElMessage.success('退出登录成功，欢迎再次使用')
         success()
     },failure)
 }
 
 //导出登录接口
-export {login, logout};
+export {login, logout, get, post};
