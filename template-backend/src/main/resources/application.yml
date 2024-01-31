@@ -1,4 +1,10 @@
 spring:
+  mail:
+    host: smtp.163.com
+    username: jocularchao@163.com
+    password: CZNYVRKNJMJOVXNG
+  rabbitmq:
+    addresses:
   security:
     filter:
       order: -100
