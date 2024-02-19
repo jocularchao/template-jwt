@@ -4,7 +4,10 @@ spring:
     username: jocularchao@163.com
     password: CZNYVRKNJMJOVXNG
   rabbitmq:
-    addresses:
+    addresses: localhost
+    username: community_admin
+    password: community_admin
+    virtual-host: /template
   security:
     filter:
       order: -100

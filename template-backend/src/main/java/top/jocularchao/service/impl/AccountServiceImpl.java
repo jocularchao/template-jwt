@@ -41,4 +41,9 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
                 .eq("email",text)
                 .one();
     }
+
+    @Override
+    public String registerEmailVerifyCode(String type, String email, String ip) {
+        return null;
+    }
 }
